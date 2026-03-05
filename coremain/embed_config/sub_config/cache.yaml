@@ -1,0 +1,71 @@
+plugins:
+#缓存序列-列表内域名
+  - tag: cache_cn
+    type: cache
+    args:
+      size: 20000000
+      lazy_cache_ttl: 259200000
+      dump_file: cache/cache_cn.dump
+      dump_interval: 36000
+
+#缓存序列-列表内域名_特殊上游CT
+  - tag: cache_cn_CT
+    type: cache
+    args:
+      size: 20000000
+      lazy_cache_ttl: 259200000
+      dump_file: cache/cache_cn_CT.dump
+      dump_interval: 36000
+
+  - tag: cache_cnmihomo
+    type: cache
+    args:
+      size: 20000000
+      lazy_cache_ttl: 259200000
+      dump_file: cache/cache_cnmihomo.dump
+      dump_interval: 36000
+
+#缓存序列-列表外域名-node
+  - tag: cache_node
+    type: cache
+    args:
+      size: 20000000
+      lazy_cache_ttl: 259200000
+      dump_file: cache/cache_node.dump
+      dump_interval: 36000
+    
+#缓存序列-列表外域名-google
+  - tag: cache_google
+    type: cache
+    args:
+      size: 20000000
+      lazy_cache_ttl: 259200000
+      dump_file: cache/cache_google.dump
+      dump_interval: 36000
+      
+#缓存序列-列表外域名-google_node
+  - tag: cache_google_node
+    type: cache
+    args:
+      size: 20000000
+      lazy_cache_ttl: 259200000
+      dump_file: cache/cache_google_node.dump
+      dump_interval: 36000
+
+#缓存序列-所有域名
+  - tag: cache_all
+    type: cache
+    args:
+      size: 20000000
+      lazy_cache_ttl: 259200000
+      dump_file: cache/cache_all.dump
+      dump_interval: 36000
+      
+#缓存序列-所有域名-noleak
+  - tag: cache_all_noleak
+    type: cache
+    args:
+      size: 20000000
+      lazy_cache_ttl: 0
+      dump_file: cache/cache_all_noleak.dump
+      dump_interval: 36000

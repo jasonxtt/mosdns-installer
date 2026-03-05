@@ -1,0 +1,106 @@
+name: Build Installer
+
+on:
+  push:
+    branches:
+      - installer
+    tags:
+      - 'v5-tom-installer-*'
+  workflow_dispatch:
+
+jobs:
+  version:
+    runs-on: ubuntu-latest
+    outputs:
+      VERSION: ${{ steps.version.outputs.VERSION }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: installer
+          fetch-depth: 0
+
+      - name: Get version
+        id: version
+        run: |
+          VERSION="v5-tom-installer-$(date +%Y%m%d)-$(echo ${{ github.sha }} | cut -c1-7)"
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+          echo "VERSION=$VERSION"
+
+  build:
+    needs: version
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - os: linux
+            arch: amd64
+            suffix: linux-amd64
+          - os: linux
+            arch: arm64
+            suffix: linux-arm64
+          - os: linux
+            arch: arm
+            suffix: linux-armv7
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: installer
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          check-latest: true
+
+      - name: Build and package
+        env:
+          GOOS: ${{ matrix.os }}
+          GOARCH: ${{ matrix.arch }}
+          CGO_ENABLED: '0'
+          VERSION: ${{ needs.version.outputs.VERSION }}
+        run: |
+          go build -ldflags="-s -w" -o mosdns .
+          tar -czvf "mosdns-${{ matrix.suffix }}.tar.gz" mosdns
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: mosdns-${{ matrix.suffix }}
+          path: mosdns-*.tar.gz
+          retention-days: 30
+
+  release:
+    needs: [version, build]
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/')
+
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.version.outputs.VERSION }}
+          name: Mosdns Installer ${{ needs.version.outputs.VERSION }}
+          body: |
+            Automatic build of mosdns installer branch.
+            
+            **Installation:**
+            ```bash
+            tar -xzvf mosdns-linux-amd64.tar.gz
+            chmod +x mosdns
+            sudo ./mosdns install
+            ```
+          draft: false
+          prerelease: true
+          files: artifacts/mosdns-*.tar.gz
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

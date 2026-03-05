@@ -1,0 +1,19 @@
+plugins:
+# 定义了一个带过期缓存的内部使用/外部使用的国内dns服务器
+  - tag: domestic
+    type: aliapi
+    args:
+      concurrent: 3
+      upstreams:
+        - addr: "223.5.5.5"
+        - addr: "223.6.6.6"
+        - addr: "114.114.114.114"
+
+# 基础阿里DNS上游 (无缓存，供ECS序列调用)
+  - tag: domestic_ali_base
+    type: aliapi
+    args:
+      concurrent: 2
+      upstreams:
+        - addr: "223.5.5.5"
+        - addr: "223.6.6.6"

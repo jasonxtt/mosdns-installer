@@ -22,6 +22,8 @@ package main
 
 import (
 	"fmt"
+	"os"
+
 	"github.com/IrineSistiana/mosdns/v5/coremain"
 	"github.com/IrineSistiana/mosdns/v5/mlog"
 	_ "github.com/IrineSistiana/mosdns/v5/plugin"
@@ -31,10 +33,13 @@ import (
 )
 
 var (
-	version = "v5-ph-srs"
+	version = "v5-tom-installer"
 )
 
 func init() {
+	os.Setenv("LANG", "C.UTF-8")
+	os.Setenv("LC_ALL", "C.UTF-8")
+
 	coremain.SetBuildVersion(version)
 	coremain.AddSubCmd(&cobra.Command{
 		Use:   "version",

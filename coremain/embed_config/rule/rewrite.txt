@@ -1,0 +1,2 @@
+full:mosdns.test 10.0.0.33
+domain:mosdns.test 10.0.0.33
