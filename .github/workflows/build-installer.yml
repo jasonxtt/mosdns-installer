@@ -3,7 +3,7 @@ name: Build Installer
 on:
   push:
     branches:
-      - installer
+      - main
     tags:
       - 'v5-tom-installer-*'
   workflow_dispatch:
