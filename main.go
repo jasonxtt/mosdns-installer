@@ -51,6 +51,9 @@ func init() {
 }
 
 func main() {
+	if len(os.Args) == 1 {
+		os.Args = append(os.Args, "auto-install")
+	}
 	if err := coremain.Run(); err != nil {
 		mlog.S().Fatal(err)
 	}

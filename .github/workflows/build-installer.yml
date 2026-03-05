@@ -35,19 +35,34 @@ jobs:
         include:
           - os: linux
             arch: amd64
+            goamd64: v3
+            suffix: linux-amd64-v3
+          - os: linux
+            arch: amd64
+            goamd64: ""
             suffix: linux-amd64
           - os: linux
-            arch: arm64
-            suffix: linux-arm64
+            arch: arm
+            goarm: "5"
+            suffix: linux-arm-5
           - os: linux
             arch: arm
-            suffix: linux-armv7
+            goarm: "6"
+            suffix: linux-arm-6
+          - os: linux
+            arch: arm
+            goarm: "7"
+            suffix: linux-arm-7
+          - os: linux
+            arch: arm64
+            goarm: ""
+            suffix: linux-arm64
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          ref: installer
+          ref: main
           fetch-depth: 0
 
       - name: Set up Go
@@ -60,17 +75,19 @@ jobs:
         env:
           GOOS: ${{ matrix.os }}
           GOARCH: ${{ matrix.arch }}
+          GOAMD64: ${{ matrix.goamd64 }}
+          GOARM: ${{ matrix.goarm }}
           CGO_ENABLED: '0'
           VERSION: ${{ needs.version.outputs.VERSION }}
         run: |
-          go build -ldflags="-s -w" -o mosdns .
-          tar -czvf "mosdns-${{ matrix.suffix }}.tar.gz" mosdns
+          go build -ldflags="-s -w" -o mosdns-installer .
+          tar -czvf "mosdns-installer-${{ matrix.suffix }}.tar.gz" mosdns-installer
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: mosdns-${{ matrix.suffix }}
-          path: mosdns-*.tar.gz
+          name: mosdns-installer-${{ matrix.suffix }}
+          path: mosdns-installer-*.tar.gz
           retention-days: 30
 
   release:
@@ -91,16 +108,31 @@ jobs:
           tag_name: ${{ needs.version.outputs.VERSION }}
           name: Mosdns Installer ${{ needs.version.outputs.VERSION }}
           body: |
-            Automatic build of mosdns installer branch.
+            Automatic build of mosdns installer.
             
             **Installation:**
             ```bash
-            tar -xzvf mosdns-linux-amd64.tar.gz
-            chmod +x mosdns
-            sudo ./mosdns install
+            tar -xzvf mosdns-installer-linux-amd64.tar.gz
+            chmod +x mosdns-installer
+            sudo ./mosdns-installer
             ```
+            
+            **Available architectures:**
+            - `mosdns-installer-linux-amd64-v3.tar.gz` - x86-64-v3 (AVX, BMI2 support required)
+            - `mosdns-installer-linux-amd64.tar.gz` - x86-64 (standard)
+            - `mosdns-installer-linux-arm-5.tar.gz` - ARMv5
+            - `mosdns-installer-linux-arm-6.tar.gz` - ARMv6
+            - `mosdns-installer-linux-arm-7.tar.gz` - ARMv7
+            - `mosdns-installer-linux-arm64.tar.gz` - ARM64
+            
+            **Commands:**
+            - `./mosdns-installer` - Auto install/reinstall
+            - `./mosdns-installer install` - Fresh install
+            - `./mosdns-installer reinstall` - Reinstall
+            - `./mosdns-installer uninstall` - Uninstall
+            - `./mosdns-installer version` - Show version
           draft: false
           prerelease: true
-          files: artifacts/mosdns-*.tar.gz
+          files: artifacts/mosdns-installer-*.tar.gz
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

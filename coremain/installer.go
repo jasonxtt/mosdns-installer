@@ -34,6 +34,7 @@ func init() {
 	rootCmd.AddCommand(newInstallCmd())
 	rootCmd.AddCommand(newReinstallCmd())
 	rootCmd.AddCommand(newUninstallCmd())
+	rootCmd.AddCommand(newAutoInstallCmd())
 }
 
 func newInstallCmd() *cobra.Command {
@@ -57,6 +58,15 @@ func newUninstallCmd() *cobra.Command {
 		Use:   "uninstall",
 		Short: "Completely uninstall mosdns from system",
 		RunE:  runUninstall,
+	}
+}
+
+func newAutoInstallCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:    "auto-install",
+		Short:  "Auto install or reinstall mosdns based on system state",
+		RunE:   runAutoInstall,
+		Hidden: true,
 	}
 }
 
@@ -195,7 +205,7 @@ func isPortInUse(port string) bool {
 		ln, err := net.Listen(proto, ":"+port)
 		if err != nil {
 			if strings.Contains(err.Error(), "permission denied") ||
-			   strings.Contains(err.Error(), "操作不被允许") {
+				strings.Contains(err.Error(), "操作不被允许") {
 				continue
 			}
 			return true
@@ -413,7 +423,7 @@ func runUninstall(cmd *cobra.Command, args []string) error {
 
 	fmt.Println("[3/4] 正在删除二进制文件...")
 	if err := os.Remove("/usr/local/bin/mosdns"); err != nil {
-		fmt.Printf("警告: 删除二进制文件失败: %v\n", err)
+		fmt.Printf("警告：删除二进制文件失败：%v\n", err)
 	}
 
 	fmt.Println("[4/4] 正在删除配置目录...")
@@ -598,6 +608,40 @@ func isOpenRC() bool {
 		return true
 	}
 	return false
+}
+
+func isServiceInstalled() bool {
+	if _, err := os.Stat("/usr/local/bin/mosdns"); err == nil {
+		return true
+	}
+	if isSystemd() {
+		if _, err := os.Stat("/etc/systemd/system/mosdns.service"); err == nil {
+			return true
+		}
+	}
+	if isOpenRC() {
+		if _, err := os.Stat("/etc/init.d/mosdns"); err == nil {
+			return true
+		}
+	}
+	if _, err := os.Stat("/cus/mosdns"); err == nil {
+		return true
+	}
+	return false
+}
+
+func runAutoInstall(cmd *cobra.Command, args []string) error {
+	if os.Geteuid() != 0 {
+		return fmt.Errorf("this command must be run as root (use sudo)")
+	}
+
+	if isServiceInstalled() {
+		fmt.Println("[信息] 检测到已安装的 mosdns，执行重装...")
+		return runReinstall(cmd, args)
+	} else {
+		fmt.Println("[信息] 未检测到 mosdns，执行全新安装...")
+		return runInstall(cmd, args)
+	}
 }
 
 var _ = regexp.MustCompile("")
