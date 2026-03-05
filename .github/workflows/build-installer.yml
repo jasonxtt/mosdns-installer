@@ -17,13 +17,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          ref: installer
           fetch-depth: 0
 
       - name: Get version
         id: version
         run: |
-          VERSION="v5-tom-installer-$(date +%Y%m%d)-$(echo ${{ github.sha }} | cut -c1-7)"
+          VERSION="${{ github.ref_name }}"
           echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
           echo "VERSION=$VERSION"
 
