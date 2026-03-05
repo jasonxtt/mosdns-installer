@@ -131,7 +131,7 @@ jobs:
             - `./mosdns-installer uninstall` - Uninstall
             - `./mosdns-installer version` - Show version
           draft: false
-          prerelease: true
+          prerelease: false
           files: artifacts/mosdns-installer-*.tar.gz
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
