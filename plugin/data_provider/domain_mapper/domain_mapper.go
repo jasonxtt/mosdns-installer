@@ -18,7 +18,10 @@ import (
 
 const PluginType = "domain_mapper"
 
+var nextRunBit atomic.Uint32
+
 func init() {
+	nextRunBit.Store(64)
 	coremain.RegNewPluginFunc(PluginType, NewMapper, func() any { return new(Args) })
 }
 
@@ -48,6 +51,7 @@ type DomainMapper struct {
 	defaultMark uint8
 	defaultTag  string
 	providers   map[string]data_provider.RuleExporter
+	runBit      uint8
 }
 
 var _ sequence.Executable = (*DomainMapper)(nil)
@@ -70,6 +74,7 @@ func NewMapper(bp *coremain.BP, args any) (any, error) {
 		defaultMark: cfg.DefaultMark,
 		defaultTag:  cfg.DefaultTag,
 		providers:   make(map[string]data_provider.RuleExporter),
+		runBit:      uint8(nextRunBit.Add(^uint32(0))),
 	}
 	dm.matcher.Store(domain.NewMixMatcher[*MatchResult]())
 
@@ -89,7 +94,7 @@ func NewMapper(bp *coremain.BP, args any) (any, error) {
 	}
 
 	rebuild := func() {
-		dm.logger.Info("rebuilding domain_mapper with zero-allocation query logic...")
+		dm.logger.Info("rebuilding domain_mapper with logic inheritance...")
 		start := time.Now()
 
 		markMap := make(map[string]uint64)
@@ -123,6 +128,36 @@ func NewMapper(bp *coremain.BP, args any) (any, error) {
 				}
 			}
 			totalRules += len(rules)
+		}
+
+		for ruleStr := range markMap {
+			dotPos := strings.Index(ruleStr, ":")
+			if dotPos == -1 {
+				continue
+			}
+			dName := ruleStr[dotPos+1:]
+
+			for {
+				nextDot := strings.Index(dName, ".")
+				if nextDot == -1 {
+					break
+				}
+				dName = dName[nextDot+1:]
+				ancestorKey := "domain:" + dName
+
+				if aMask, ok := markMap[ancestorKey]; ok {
+					markMap[ruleStr] |= aMask
+					aTags := tagMap[ancestorKey]
+					if aTags != "" {
+						cTags := tagMap[ruleStr]
+						if cTags == "" {
+							tagMap[ruleStr] = aTags
+						} else if !strings.Contains(cTags, aTags) {
+							tagMap[ruleStr] = cTags + "|" + aTags
+						}
+					}
+				}
+			}
 		}
 
 		pool := make(map[string]*MatchResult)
@@ -194,8 +229,12 @@ func (dm *DomainMapper) FastMatch(qname string) ([]uint8, string, bool) {
 	return nil, "", false
 }
 
+func (dm *DomainMapper) GetRunBit() uint8 {
+	return dm.runBit
+}
+
 func (dm *DomainMapper) Exec(ctx context.Context, qCtx *query_context.Context) error {
-	if qCtx.HasFastFlag(1) || qCtx.HasFastFlag(2) || qCtx.HasFastFlag(3) || qCtx.HasFastFlag(5) || qCtx.HasFastFlag(6) {
+	if qCtx.HasFastFlag(dm.runBit) {
 		return nil
 	}
 
@@ -228,8 +267,9 @@ func (dm *DomainMapper) Exec(ctx context.Context, qCtx *query_context.Context) e
 func (dm *DomainMapper) GetFastExec() func(ctx context.Context, qCtx *query_context.Context) error {
 	defMark := dm.defaultMark
 	defTag := dm.defaultTag
+	rBit := dm.runBit
 	return func(ctx context.Context, qCtx *query_context.Context) error {
-		if qCtx.HasFastFlag(1) || qCtx.HasFastFlag(2) || qCtx.HasFastFlag(3) || qCtx.HasFastFlag(5) || qCtx.HasFastFlag(6) {
+		if qCtx.HasFastFlag(rBit) {
 			return nil
 		}
 
